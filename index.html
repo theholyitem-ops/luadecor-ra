@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LUA DECOR | Probador de Espejos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f5f5f0;
+            overflow: hidden;
+            margin: 0;
+            height: 100dvh;
+            width: 100vw;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Pantalla de Inicio */
+        #landing-page {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 100;
+            background-color: #f5f5f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            transition: all 0.6s cubic-bezier(0.7, 0, 0.3, 1);
+        }
+
+        #landing-page.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1.1);
+        }
+
+        .logo-container {
+            width: 150px; height: 150px;
+            margin: 0 auto 30px;
+            background-color: #6d815d; 
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(109, 129, 93, 0.25);
+            color: white;
+            font-family: 'Montserrat', sans-serif;
+            line-height: 1;
+            text-transform: uppercase;
+        }
+
+        .logo-text-top { font-weight: 700; font-size: 22px; letter-spacing: 4px; margin-bottom: 4px; }
+        .logo-text-bottom { font-weight: 300; font-size: 16px; letter-spacing: 2px; }
+
+        .btn-start {
+            background-color: #b19cd9;
+            color: white;
+            padding: 16px 36px;
+            border-radius: 50px;
+            font-weight: 500;
+            letter-spacing: 1.5px;
+            box-shadow: 0 10px 25px rgba(177, 156, 217, 0.35);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .btn-start:active { transform: scale(0.95); background-color: #a089c9; }
+
+        #workspace-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            background: #222;
+        }
+
+        #user-room-bg {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        #ar-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 5;
+            touch-action: none;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100dvh;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .ui-overlay.visible { opacity: 1; }
+        .ui-overlay * { pointer-events: auto; }
+
+        .mini-logo-container {
+            width: 50px; height: 50px;
+            background-color: #6d815d;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Montserrat', sans-serif;
+            text-transform: uppercase;
+            line-height: 1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .mini-logo-top { font-weight: 700; font-size: 7px; letter-spacing: 1px; }
+        .mini-logo-bottom { font-weight: 300; font-size: 5px; letter-spacing: 0.5px; }
+
+        .mirror-gallery {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 10px;
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            max-width: 95vw;
+            margin: 0 auto;
+        }
+        .mirror-gallery::-webkit-scrollbar { display: none; }
+
+        .mirror-item {
+            flex: 0 0 70px;
+            height: 70px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .mirror-item.active {
+            border-color: #b19cd9;
+            background: rgba(255, 255, 255, 0.9);
+            transform: scale(1.1);
+        }
+
+        .control-btn {
+            width: 46px; height: 46px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+
+        .helper-text {
+            color: white;
+            text-align: center;
+            font-size: 10px;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <input type="file" id="room-photo-upload" accept="image/*" style="display:none">
+
+    <div id="landing-page">
+        <div class="logo-container">
+            <span class="logo-text-top">LUA</span>
+            <span class="logo-text-bottom">DECOR</span>
+        </div>
+        <h2 class="text-stone-800 text-3xl font-light mb-2 tracking-tight">Probador Virtual</h2>
+        <p class="text-stone-500 mb-8 font-light px-4">Tómale una foto a tu pared y descubre cómo se ven nuestros espejos.</p>
+        
+        <button class="btn-start" onclick="document.getElementById('room-photo-upload').click()">
+            Subir foto de mi pared
+        </button>
+        <p class="absolute bottom-10 text-stone-400 text-[10px] tracking-widest uppercase font-medium">Hecho a mano • Lua Decor</p>
+    </div>
+
+    <div id="workspace-container">
+        <img id="user-room-bg" src="" alt="Fondo">
+        <canvas id="ar-canvas"></canvas>
+    </div>
+
+    <div class="ui-overlay" id="main-ui">
+        <div class="flex justify-between items-start">
+            <div class="mini-logo-container">
+                <span class="mini-logo-top">LUA</span>
+                <span class="mini-logo-bottom">DECOR</span>
+            </div>
+            <div class="text-right">
+                <h1 class="text-white text-[11px] font-medium tracking-widest uppercase drop-shadow-md">Estudio Virtual</h1>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-end mb-4">
+            <button class="control-btn" onclick="document.getElementById('room-photo-upload').click()" title="Cambiar pared">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            </button>
+            <button class="control-btn" onclick="resetView()" title="Centrar">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+        </div>
+
+        <div class="w-full">
+            <p class="helper-text">Mueve con un dedo • Pellizca para tamaño</p>
+            <div class="mirror-gallery" id="mirror-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // LISTA DE ESPEJOS CORREGIDA
+        const mirrors = [
+            { id: 1, name: 'Bora', url: 'Espejo Bora.png' },
+            { id: 2, name: 'Aqua', url: 'Espejo Aqua.png' },
+            { id: 3, name: 'Sicilia', url: 'Espejo Sicilia.png' },
+            { id: 4, name: 'Petra', url: 'Espejo Petra.png' },
+            { id: 5, name: 'Hamburgo', url: 'Espejo hamburgo.png' }
+        ];
+
+        let activeMirrorIdx = 0;
+        let mirrorX, mirrorY, mirrorScale = 0.4;
+        let isDragging = false;
+        let lastTouchDist = 0;
+        const mirrorImg = new Image();
+        
+        const canvas = document.getElementById('ar-canvas');
+        const ctx = canvas.getContext('2d');
+        const roomBg = document.getElementById('user-room-bg');
+        const roomUploadInput = document.getElementById('room-photo-upload');
+
+        roomUploadInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            roomBg.src = URL.createObjectURL(file);
+            roomBg.style.display = 'block';
+
+            document.getElementById('landing-page').classList.add('hidden');
+            document.getElementById('main-ui').classList.add('visible');
+
+            resizeCanvas();
+            setupGallery();
+            loadMirror(0);
+            requestAnimationFrame(render);
+        });
+
+        function setupGallery() {
+            const list = document.getElementById('mirror-list');
+            list.innerHTML = '';
+            mirrors.forEach((m, index) => {
+                const item = document.createElement('div');
+                item.className = `mirror-item ${index === activeMirrorIdx ? 'active' : ''}`;
+                item.innerHTML = `
+                    <img src="${m.url}" style="width:85%; height:85%; object-fit:contain;" 
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <span style="display:none; color:white; font-size:8px; text-align:center; padding:5px;">${m.name}</span>
+                `;
+                item.onclick = () => loadMirror(index);
+                list.appendChild(item);
+            });
+        }
+
+        function loadMirror(index) {
+            activeMirrorIdx = index;
+            mirrorImg.src = mirrors[index].url;
+            document.querySelectorAll('.mirror-item').forEach((el, i) => {
+                el.classList.toggle('active', i === index);
+            });
+        }
+
+        function resetView() {
+            mirrorScale = 0.4;
+            mirrorX = canvas.width / 2;
+            mirrorY = canvas.height / 2.5;
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            if(mirrorX === undefined) resetView();
+        }
+
+        // Interacciones
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) isDragging = true;
+            if (e.touches.length === 2) lastTouchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1 && isDragging) {
+                mirrorX = e.touches[0].pageX;
+                mirrorY = e.touches[0].pageY;
+            }
+            if (e.touches.length === 2) {
+                const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                mirrorScale += (dist - lastTouchDist) * 0.005;
+                mirrorScale = Math.min(Math.max(0.1, mirrorScale), 1.2);
+                lastTouchDist = dist;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', () => isDragging = false);
+
+        // Renderizado con sombra orgánica
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (mirrorImg.complete && mirrorImg.naturalWidth > 0) {
+                const aspect = mirrorImg.naturalWidth / mirrorImg.naturalHeight;
+                const h = canvas.height * mirrorScale;
+                const w = h * aspect;
+
+                ctx.save();
+                ctx.shadowBlur = 30;
+                ctx.shadowColor = "rgba(0,0,0,0.35)";
+                ctx.shadowOffsetY = 20;
+                ctx.drawImage(mirrorImg, mirrorX - w/2, mirrorY - h/2, w, h);
+                ctx.restore();
+            }
+            requestAnimationFrame(render);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+    </script>
+</body>
+</html>
